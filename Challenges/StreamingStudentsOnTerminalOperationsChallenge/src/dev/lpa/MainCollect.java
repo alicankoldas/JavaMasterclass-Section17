@@ -2,68 +2,55 @@ package dev.lpa;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.IntStream;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MainCollect {
 
     public static void main(String[] args) {
 
-        Course pymc = new Course("PYMC", "Python Masterclass", 50);
-        Course jmc = new Course("JMC", "Java Masterclass", 100);
-        Course jgames = new Course("JGAME", "Creating Games in Java");
+        Course pymc= new Course("PYMC", "Python Masterclass");
+        Course jmc= new Course("JMC", "Java Masterclass");
 
-        List<Student> students = IntStream
-                .rangeClosed(1, 5000)
-                .mapToObj(s -> Student.getRandomStudent(jmc, pymc))
-                .toList();
+        List<Student> students =
+                Stream.generate(() -> Student.getRandomStudent(jmc, pymc))
+                        .limit(1000)
+                        .toList();
 
-        double totalPercent = students.stream()
-                .mapToDouble(student -> student.getPercentComplete("JMC"))
-                .reduce(0, Double::sum);
-                //.sum(); (bunu da kullanabilirdik)
+        Set<Student> australianStudents = students.stream()
+                .filter((s) -> s.getCountryCode().equals("AU"))
+                .collect(Collectors.toSet());
+        System.out.println("# of Australian Students = " + australianStudents.size());
 
-        double avePercent = totalPercent / students.size();
-        System.out.printf("Average Percentage Complete = %.2f%% %n", avePercent);
+        Set<Student> underThirty = students.stream()
+                .filter((s) -> s.getAgeEnrolled() < 30)
+                .collect(Collectors.toSet());
+        System.out.println("# of Under Thirty Students = " + underThirty.size());
 
-        int topPercent = (int) (1.25 * avePercent);
-        System.out.printf("Best Percentage Complete = %d%% %n", topPercent);
-
-        Comparator<Student> longTermStudent = Comparator.
-                comparing(Student::getYearEnrolled);
-
-        List<Student> hardWorkers = students.stream()
-                .filter(s -> s.getMonthsSinceActive("JMC") == 0)
-                .filter(s -> s.getPercentComplete("JMC") >= topPercent)
-                .sorted(longTermStudent)
-                .limit(10)
-                .toList();
-
-        hardWorkers.forEach(s -> {
-            s.addCourse(jgames);
-            System.out.print(s.getStudentId() + " ");
-        });
-
+        Set<Student> youngAussies1 = new TreeSet<>(Comparator.comparing(
+                Student::getStudentId));
+        youngAussies1.addAll(australianStudents);
+        youngAussies1.retainAll(underThirty);
+        youngAussies1.forEach((s) -> System.out.print(s.getStudentId() + " "));
         System.out.println();
 
+        Set<Student> youngAussies2 = students.stream()
+                .filter((s) -> s.getAgeEnrolled() < 30)
+                .filter((s) -> s.getCountryCode().equals("AU"))
+                .collect(() -> new TreeSet<>(Comparator.comparing(
+                        Student::getStudentId)), TreeSet::add, TreeSet::addAll);
 
-        //Another way to do it
-        Comparator<Student> uniqueSorted = longTermStudent.thenComparing(
-                Student::getStudentId);
+        youngAussies2.forEach((s) -> System.out.print(s.getStudentId() + " "));
+        System.out.println();
 
-        students.stream()
-                .filter(s -> s.getMonthsSinceActive("JMC") == 0)
-                .filter(s -> s.getPercentComplete("JMC") >= topPercent)
-                .sorted(longTermStudent)
-                .limit(10)
-                //.toList()
-                //.collect(Collectors.toList())
-                //.collect(Collectors.toSet())
-                .collect(() -> new TreeSet<>(uniqueSorted),
-                        TreeSet::add, TreeSet::addAll)
-                .forEach(s -> {
-                    s.addCourse(jgames);
-                    System.out.print(s.getStudentId() + " ");
-                });
+        String countryList = students.stream()
+                .map(Student::getCountryCode)
+                .distinct()
+                .sorted()
+                .reduce("", (r, v) -> r + " " + v);
+        System.out.println("countryList = " + countryList);
+
     }
 }
